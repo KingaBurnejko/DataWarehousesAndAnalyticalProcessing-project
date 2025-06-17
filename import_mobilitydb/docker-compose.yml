@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: mobilitydb/mobilitydb:latest
+    container_name: mobilitydb_container
+    environment:
+      POSTGRES_DB: mobilitydb_db  # ZMIEŃ NA SWOJĄ NAZWĘ BAZY DANYCH
+      POSTGRES_USER: magda       # ZMIEŃ NA SWOJĄ NAZWĘ UŻYTKOWNIKA
+      POSTGRES_PASSWORD: nowe_haslo # ZMIEŃ NA SWOJE HASŁO
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U magda -d mobilitydb_db"] # Użyj SWOICH danych
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  data_importer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: data_importer_container
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../:/app
+    working_dir: /app/docker_db
+    environment: # WAŻNE: TA SEKCJA MUSI BYĆ WCIĘTA DOKŁADNIE O 2 SPACJE OD "data_importer:"
+      DB_HOST: db # To jest nazwa usługi bazy danych w sieci Docker Compose
+      DB_NAME: mobilitydb_db # MUSI BYĆ TAKIE SAMO JAK POSTGRES_DB Z POWYŻSZEJ SEKCJI DB
+      DB_USER: magda    # MUSI BYĆ TAKIE SAMO JAK POSTGRES_USER Z POWYŻSZEJ SEKCJI DB
+      DB_PASSWORD: nowe_haslo # MUSI BYĆ TAKIE SAMO JAK POSTGRES_PASSWORD Z POWYŻSZEJ SEKCJI DB
+      # Poniższe zmienne środowiskowe nie są używane w skrypcie Pythona do określania ścieżek
+      # (bo ścieżki są w nim na stałe), ale mogą być przydatne w przyszłości.
+      # Ważne, że nie psują działania.
+      IMAGES_F_PATH: /app/F_trajectories/camera_images
+      IMAGES_I_PHONE_PATH: /app/I_trajectories/phone_camera_images
+      IMAGES_I_POINTGREY_PATH: /app/I_trajectories/pointgrey_camera_images
+
+# Wolumeny dla trwałych danych
+volumes:
+  db_data:
