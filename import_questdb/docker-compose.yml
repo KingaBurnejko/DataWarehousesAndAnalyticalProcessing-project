@@ -1,0 +1,40 @@
+version: '3.9'
+services:
+  questdb:
+    image: questdb/questdb:latest
+    container_name: questdb
+    ports:
+      - "9000:9000"   # Web UI
+      - "8812:8812"   # PostgreSQL protocol
+    volumes:
+      - questdb_data:/var/lib/questdb
+    restart: unless-stopped
+
+  importer:
+    build: ./importer
+    container_name: questdb_importer
+    depends_on:
+      - questdb
+    environment:
+      QUESTDB_HOST: questdb
+      QUESTDB_PORT: 8812
+      QUESTDB_DB: qdb
+      QUESTDB_USER: admin
+      QUESTDB_PASSWORD: quest
+    volumes:
+      - ./data:/data:ro
+    command: ["python", "import_to_questdb.py"]
+
+  converter:
+    build: ./bag_converter
+    volumes:
+      - ./bag_converter:/app
+      - ./bag_files:/data/bag_files
+      - ./data:/data
+    working_dir: /app
+    stdin_open: true
+    tty: true
+
+
+volumes:
+  questdb_data:
